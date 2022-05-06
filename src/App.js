@@ -1,5 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
+import BigNumber from 'bignumber.js'
 
 function App() {
   const Web3 = require('web3')
@@ -14,8 +15,8 @@ function App() {
       const web3 = new Web3(PROVIDER);
       const wss_web3 = new Web3(WSS_PROVIDER);
       // 2. get eth balance
-      const ethBalance = await web3.eth.getBalance('0x5FeC8FD7BB410919A01B31F866bA57619f3303FA')
-      console.log(ethBalance)
+      // const ethBalance = await web3.eth.getBalance('0x5FeC8FD7BB410919A01B31F866bA57619f3303FA')
+      // console.log(ethBalance)
 
       // 3. khởi tạo contract weth
       const wethContract = await new web3.eth.Contract(ERC20_ABI, '0xd0A1E359811322d97991E03f863a0C30C2cF029C')
@@ -23,8 +24,8 @@ function App() {
 
       // console.log(wethContract.methods)
       // 4. BalanceOf
-      const balanceOfAcc = await wethContract.methods.balanceOf('0x5FeC8FD7BB410919A01B31F866bA57619f3303FA').call();
-      console.log(balanceOfAcc)
+      // const balanceOfAcc = await wethContract.methods.balanceOf('0x5FeC8FD7BB410919A01B31F866bA57619f3303FA').call();
+      // console.log(balanceOfAcc)
 
       // const privateKey = '42c634daec9f3f9b81ea6b20e7bbd811639000f07ceac7e33d620f6e81a40c2d';
       // const address = '0x5FeC8FD7BB410919A01B31F866bA57619f3303FA';
@@ -49,12 +50,13 @@ function App() {
       // const latestBlock = await web3.eth.getBlock(latest)
       // console.log(latestBlock)
 
-      // const options = {
-      //   fromBlock: blockNumberLastest 
-      // }
       // 9. get 'transfer' event
-      // const pastEvent = await wethContract.getPastEvents('Transfer')
-      // console.log(pastEvent)
+      // const options = {
+      //   fromBlock: latest - 1000,
+      // }
+      // await wethContract.getPastEvents('Transfer', options).then(function (event) {
+      //   console.log(event)
+      // })
 
       // 10. get 'transfer' event realtime
       // wethContract.events.Transfer({
@@ -64,21 +66,34 @@ function App() {
       // })
 
       // 11. MultiCall
-      // const multicall = new ethereumMulticall.Multicall({ web3Instance: web3, tryAggregate: true});
-      // // console.log(multicall)
-      // const addressList = ['0xc05c2aaDfAdb5CdD8EE25ec67832B524003B2E37', '0x5FeC8FD7BB410919A01B31F866bA57619f3303FA', '0x3b338e782859aE11c0B15694bc482a9aFa4A5809'];
+      const multicall = new ethereumMulticall.Multicall({ web3Instance: web3, tryAggregate: true});
+      // console.log(multicall)
+      const addressList = ['0xc05c2aaDfAdb5CdD8EE25ec67832B524003B2E37', '0x5FeC8FD7BB410919A01B31F866bA57619f3303FA', '0x3b338e782859aE11c0B15694bc482a9aFa4A5809'];
 
-      // const contractCallContext = addressList.map((address, index) => {
-      //   return {
-      //     reference: 'user',
-      //     contractAddress: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
-      //     abi: ERC20_ABI,
-      //     calls: [{ reference: 'balance' + index, methodName: 'balanceOf', methodParameters: [address] }]
-      //   }
-      // })
+      const contractCallContext = addressList.map((address, index) => {
+        return {
+          reference: 'user' + index,
+          contractAddress: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+          abi: ERC20_ABI,
+          calls: [{ reference: 'balance' + index, methodName: 'balanceOf', methodParameters: [address] }]
+        }
+      })
 
-      // const call = await multicall.call(contractCallContext)
-      // console.log(call)
+      const call = await multicall.call(contractCallContext)
+      // console.log(call.results)
+      const balanceWallets = []
+
+      for (let [key, user] of Object.entries(call.results)) {
+        const hexBalance = (user.callsReturnContext[0].returnValues[0].hex)
+        const decBalance = web3.utils.fromWei(hexBalance)
+
+        balanceWallets.push({
+          wallet: addressList[balanceWallets.length],
+          balance: decBalance
+        })
+      }
+
+      console.log(balanceWallets)
     })();
   } catch (e) {
     console.log(e)
